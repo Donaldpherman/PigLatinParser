@@ -103,47 +103,41 @@ int yyerror(const char *p)
     return true;
 }
  
-char* getLineFromPosition(const char* s, int pos, int* outPosition, char *line)
+char* getLineFromPosition(const char* s, int* pos, char *line)
 {
-    printf("getLineFromPosition");
 	for(int i = 0; ;++i)
 	{
-        line[i] = s[pos];
-		++pos;
+        line[i] = s[*pos];
+		++(*pos);
         if(line[i] == '\0')
-		{
-			*outPosition = i;
             return line;
-		}
         if(line[i] == '\n')
 		{
             line[i+1]='\0';
-			*outPosition = i + 1;
             return line;
         }	
     }
-    printf("getLineFromPositionEND\n");
 }
 
-bool match(char comparator, int numberToCompare, int colNumToCompare)
+bool match(char comparator, int colNumToCompare, int numberToCompare)
 {
 
 			switch(comparator)
 			{
 				case '>'  :
-					return numberToCompare > colNumToCompare;
+					return colNumToCompare > numberToCompare;
 					break;
 				case '>=' :
-					return numberToCompare >= colNumToCompare;
+					return colNumToCompare >= numberToCompare;
 					break;
 				case '==' :
-					return numberToCompare == colNumToCompare;
+					return colNumToCompare == numberToCompare;
 					break;
 				case '<=' :
-					return numberToCompare <= colNumToCompare;
+					return colNumToCompare <= numberToCompare;
 					break;
 				case '<'  :
-					return numberToCompare < colNumToCompare;
+					return colNumToCompare < numberToCompare;
 					break;
 				default :
 					printf("error in match()");
@@ -154,7 +148,7 @@ bool match(char comparator, int numberToCompare, int colNumToCompare)
 
 
 /* Line 189 of yacc.c  */
-#line 158 "parser.tab.c"
+#line 152 "parser.tab.c"
 
 /* Enabling traces.  */
 #ifndef YYDEBUG
@@ -203,7 +197,7 @@ typedef union YYSTYPE
 {
 
 /* Line 214 of yacc.c  */
-#line 84 "parser.y"
+#line 78 "parser.y"
 
     /* this will be used for the yylval. */
     /* it is a union since three data types will be used */
@@ -214,7 +208,7 @@ typedef union YYSTYPE
 
 
 /* Line 214 of yacc.c  */
-#line 218 "parser.tab.c"
+#line 212 "parser.tab.c"
 } YYSTYPE;
 # define YYSTYPE_IS_TRIVIAL 1
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
@@ -226,7 +220,7 @@ typedef union YYSTYPE
 
 
 /* Line 264 of yacc.c  */
-#line 230 "parser.tab.c"
+#line 224 "parser.tab.c"
 
 #ifdef short
 # undef short
@@ -512,8 +506,8 @@ static const yytype_int8 yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint8 yyrline[] =
 {
-       0,   113,   113,   114,   118,   120,   122,   124,   128,   144,
-     151,   180
+       0,   107,   107,   108,   112,   114,   116,   118,   122,   138,
+     145,   170
 };
 #endif
 
@@ -1422,21 +1416,21 @@ yyreduce:
         case 2:
 
 /* Line 1455 of yacc.c  */
-#line 113 "parser.y"
+#line 107 "parser.y"
     { ;}
     break;
 
   case 3:
 
 /* Line 1455 of yacc.c  */
-#line 114 "parser.y"
+#line 108 "parser.y"
     { ;}
     break;
 
   case 8:
 
 /* Line 1455 of yacc.c  */
-#line 129 "parser.y"
+#line 123 "parser.y"
     {
             FILE * f;
 			fopen_s(&f, (yyvsp[(2) - (2)].str), "rb");
@@ -1454,7 +1448,7 @@ yyreduce:
   case 9:
 
 /* Line 1455 of yacc.c  */
-#line 145 "parser.y"
+#line 139 "parser.y"
     {
 			printf(var_values[(yyvsp[(2) - (2)].index)]);
 		;}
@@ -1463,40 +1457,36 @@ yyreduce:
   case 10:
 
 /* Line 1455 of yacc.c  */
-#line 152 "parser.y"
+#line 146 "parser.y"
     {
-            printf("start filter_by\n");
-			int i = 0;
-			char var[256] = {(yyvsp[(2) - (7)].index)};
+			char* variable = {var_values[(yyvsp[(2) - (7)].index)]};
 			int colID = (yyvsp[(5) - (7)].num);
 			char* comparator = (yyvsp[(6) - (7)].str);
 			int numberToCompare = (yyvsp[(7) - (7)].num);
 			
 			// get a line
 			int pos = 0;
-			int outPos = 0;
 			char newString[256];
-            printf("start filter_by line 162\n");
+            newString[0] = '\0';
 			do{
-                char line[256];
-				getLineFromPosition(var, pos, &outPos, line);
-				int colNumToCompare = line[colID * 2];
+                char line[256] = "";
+				getLineFromPosition(variable, &pos, line);
+				int colNumToCompare = atoi(&line[colID * 2]);
 				
-				if (match(*comparator, numberToCompare, colNumToCompare))
+				if (match(*comparator, colNumToCompare, numberToCompare))
 				{
 					strcat_s(newString, 256, line);
 				}
-			}while(var[outPos] != '\0');
+			}while(variable[pos] != '\0');
 			
 			(yyval.str) = newString;
-            printf("end filter_by");
 		;}
     break;
 
   case 11:
 
 /* Line 1455 of yacc.c  */
-#line 181 "parser.y"
+#line 171 "parser.y"
     { 
 			var_values[(yyvsp[(1) - (3)].index)] = (yyvsp[(3) - (3)].str); 
 			var_def[(yyvsp[(1) - (3)].index)] = 1;  
@@ -1507,7 +1497,7 @@ yyreduce:
 
 
 /* Line 1455 of yacc.c  */
-#line 1511 "parser.tab.c"
+#line 1501 "parser.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -1719,7 +1709,7 @@ yyreturn:
 
 
 /* Line 1675 of yacc.c  */
-#line 188 "parser.y"
+#line 178 "parser.y"
 
  
 int main(void)

@@ -59,8 +59,8 @@ comparator ">"|">="|"=="|"<="|"<"
 
 
 %%
- 
-[ \t]                 { }
+
+[ \t]+                 { }
  
 LOAD 		{return LOAD;}
 DUMP 		{return DUMP;}
@@ -87,7 +87,7 @@ GENERATE 	{return GENERATE;}
 }
 
 {comparator} {
-                yylval.str = yytext;
+                yylval.str = _strdup(yytext);
                 return COMPARATOR;
 }
 

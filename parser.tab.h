@@ -61,7 +61,7 @@ typedef union YYSTYPE
 {
 
 /* Line 1676 of yacc.c  */
-#line 84 "parser.y"
+#line 78 "parser.y"
 
     /* this will be used for the yylval. */
     /* it is a union since three data types will be used */

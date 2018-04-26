@@ -31,47 +31,41 @@ int yyerror(const char *p)
     return true;
 }
  
-char* getLineFromPosition(const char* s, int pos, int* outPosition, char *line)
+char* getLineFromPosition(const char* s, int* pos, char *line)
 {
-    printf("getLineFromPosition");
 	for(int i = 0; ;++i)
 	{
-        line[i] = s[pos];
-		++pos;
+        line[i] = s[*pos];
+		++(*pos);
         if(line[i] == '\0')
-		{
-			*outPosition = i;
             return line;
-		}
         if(line[i] == '\n')
 		{
             line[i+1]='\0';
-			*outPosition = i + 1;
             return line;
         }	
     }
-    printf("getLineFromPositionEND\n");
 }
 
-bool match(char comparator, int numberToCompare, int colNumToCompare)
+bool match(char comparator, int colNumToCompare, int numberToCompare)
 {
 
 			switch(comparator)
 			{
 				case '>'  :
-					return numberToCompare > colNumToCompare;
+					return colNumToCompare > numberToCompare;
 					break;
 				case '>=' :
-					return numberToCompare >= colNumToCompare;
+					return colNumToCompare >= numberToCompare;
 					break;
 				case '==' :
-					return numberToCompare == colNumToCompare;
+					return colNumToCompare == numberToCompare;
 					break;
 				case '<=' :
-					return numberToCompare <= colNumToCompare;
+					return colNumToCompare <= numberToCompare;
 					break;
 				case '<'  :
-					return numberToCompare < colNumToCompare;
+					return colNumToCompare < numberToCompare;
 					break;
 				default :
 					printf("error in match()");
@@ -150,31 +144,27 @@ dump_variable:
 filter_by:
 		FILTER VARIABLE BY COLUMNID NUMBER COMPARATOR NUMBER
 		{
-            printf("start filter_by\n");
-			int i = 0;
-			char var[2^16] = var_values[$2];
+			char* variable = {var_values[$2]};
 			int colID = $5;
 			char* comparator = $6;
 			int numberToCompare = $7;
 			
 			// get a line
 			int pos = 0;
-			int outPos = 0;
 			char newString[256];
-            printf("start filter_by line 162\n");
+            newString[0] = '\0';
 			do{
-                char line[256];
-				getLineFromPosition(var, pos, &outPos, line);
-				int colNumToCompare = line[colID * 2];
+                char line[256] = "";
+				getLineFromPosition(variable, &pos, line);
+				int colNumToCompare = atoi(&line[colID * 2]);
 				
-				if (match(*comparator, numberToCompare, colNumToCompare))
+				if (match(*comparator, colNumToCompare, numberToCompare))
 				{
 					strcat_s(newString, 256, line);
 				}
-			}while(var[outPos] != '\0');
+			}while(variable[pos] != '\0');
 			
 			$$ = newString;
-            printf("end filter_by");
 		}
 	
 assignment : VARIABLE '=' command	
