@@ -23,6 +23,8 @@ extern void reset();
 /* variables for the grammar file */
 int invalid = false;            // just added for error checking
 char* var_values[TABSIZE];     // array where all the values are stored
+
+char* temp_values[TABSIZE];
  
 int yyerror(const char *p) 
 {
@@ -72,6 +74,37 @@ bool match(char comparator, int colNumToCompare, int numberToCompare)
 			}
             return false;
 }
+
+int mathOperation(char operator, int colNumToCompare, int numberToCompare)
+{
+
+			switch(operator)
+			{
+				case '+'  :
+					return colNumToCompare + numberToCompare;
+					break;
+				case '-' :
+					return colNumToCompare - numberToCompare;
+					break;
+				case '*' :
+					return colNumToCompare * numberToCompare;
+					break;
+				case '/' :
+                    if (numberToCompare == 0)
+                    {
+                        printf("Divide by Zero Error");
+                        return 0;
+                    }
+                	return colNumToCompare / numberToCompare;
+					break;
+				case '^'  :
+					return (int)pow(colNumToCompare, numberToCompare);
+					break;
+				default :
+					printf("error in mathOperation()");
+			}
+            return false;
+}
 		
 %}
  
@@ -87,7 +120,8 @@ bool match(char comparator, int colNumToCompare, int numberToCompare)
 %token <index> VARIABLE
 %token <str> FILENAME
 %token <num> NUMBER
-%token <str> COMPARATOR;
+%token <str> COMPARATOR
+%token <str> OPERATOR
 %token LOAD
 %token DUMP
 %token FILTER
@@ -101,6 +135,8 @@ bool match(char comparator, int colNumToCompare, int numberToCompare)
 %type <str> filter_by
 %type <str> command
 %type <str> assignment
+%type <str> foreach_generate
+%type <str> expression
 
 %%
  
@@ -116,11 +152,14 @@ command :
 		assignment
 		|
 		filter_by
+        |
+        foreach_generate
 		;
  
 load_filename:                           	
 		LOAD FILENAME
 		{
+            printf("load_filename");
             FILE * f;
 			fopen_s(&f, $2, "rb");
 			fseek (f, 0, SEEK_END);
@@ -167,6 +206,41 @@ filter_by:
 			$$ = newString;
 		}
 	
+foreach_generate:
+    FOREACH VARIABLE GENERATE expression
+    {
+        $$ =  $4;
+    }
+
+expression:
+    COLUMNID NUMBER OPERATOR NUMBER
+		{
+			char* variable = {var_values[$<index>-1]};
+			int colID = $1;
+			char* operator = $3;
+			int numberToOperate = $4;
+			
+			// get a line
+			int pos = 0;
+			char newString[256];
+            newString[0] = '\0';
+			do{
+                char line[256] = "";
+				getLineFromPosition(variable, &pos, line);
+				int colNumToOperate = atoi(&line[colID * 2]);
+				
+				int number = mathOperation(*operator, colNumToOperate, numberToOperate);
+                char stringNumber[33];
+                itoa (number, stringNumber, 10);
+				strcat_s(newString, 256, stringNumber);
+                if (variable[pos] != '\0')
+                    strcat_s(newString, 256, ",");
+				
+			}while(variable[pos] != '\0');
+			
+			$$ = newString;
+		}
+
 assignment : VARIABLE '=' command	
 		{ 
 			var_values[$1] = $3; 

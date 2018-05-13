@@ -56,7 +56,7 @@ number	[0-9]+
 id      [a-zA-Z][a-zA-Z0-9]*
 file	{id}\.{id}
 comparator ">"|">="|"=="|"<="|"<"
-
+operator "+"|"-"|"*"|"/"|"^"
 
 %%
 
@@ -95,6 +95,11 @@ GENERATE 	{return GENERATE;}
     /* convert yytext to a double and return it  */
     yylval.num = atoi(yytext);
     return NUMBER;
+}
+
+{operator} {
+                yylval.str = _strdup(yytext);
+                return OPERATOR;
 }
 
 [ \n]	return EOL;
