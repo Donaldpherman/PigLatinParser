@@ -2,7 +2,7 @@
 
 Language parser I wrote using flex and bison.
 
-Use Flex 2.5.4 and Bison 2.4.1 plus visual studios 2017 to create this project.
+Used Flex 2.5.4 and Bison 2.4.1 plus visual studios 2017 to create this project.
 
 Files loaded must have an empty line at the end to work correctly.
 
