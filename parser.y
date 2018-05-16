@@ -6,9 +6,10 @@ int yylex();
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
-#include "parser.tab.h"
 #include <stdbool.h>
 #include <string.h>
+
+#include "parser.tab.h"
  
 #define TABSIZE 1000
 #define true 1
@@ -17,14 +18,22 @@ int yylex();
 extern char* var_names[TABSIZE];
 extern int var_def[TABSIZE];
 extern int n_of_names;
-extern int install(char *txt);
+extern int install(char* txtParameter);
 extern void reset();
  
-/* variables for the grammar file */
+// variables for the grammar file
 int invalid = false;            // just added for error checking
 char* var_values[TABSIZE];     // array where all the values are stored
 
-char* temp_values[TABSIZE];
+struct ForEach
+{
+    int columnIndex;
+    char* operator;
+    int number;
+};
+
+struct ForEach for_each_values[TABSIZE];
+int forEachValuesIndex;
  
 int yyerror(const char *p) 
 {
@@ -32,27 +41,27 @@ int yyerror(const char *p)
     invalid = true;
     return true;
 }
- 
-char* getLineFromPosition(const char* s, int* pos, char *line)
+
+void getLineFromPosition(const char* s, int* pos, char *line)
 {
 	for(int i = 0; ;++i)
 	{
         line[i] = s[*pos];
 		++(*pos);
         if(line[i] == '\0')
-            return line;
+            return;
         if(line[i] == '\n')
 		{
             line[i+1]='\0';
-            return line;
+            return;
         }	
     }
 }
 
-bool match(char comparator, int colNumToCompare, int numberToCompare)
+bool match(char* comparator, int colNumToCompare, int numberToCompare)
 {
 
-			switch(comparator)
+			switch(*comparator)
 			{
 				case '>'  :
 					return colNumToCompare > numberToCompare;
@@ -75,37 +84,41 @@ bool match(char comparator, int colNumToCompare, int numberToCompare)
             return false;
 }
 
-int mathOperation(char operator, int colNumToCompare, int numberToCompare)
+int mathOperation(char* operator, int colNumToOperate, int numToOperate)
 {
-
-			switch(operator)
-			{
-				case '+'  :
-					return colNumToCompare + numberToCompare;
-					break;
-				case '-' :
-					return colNumToCompare - numberToCompare;
-					break;
-				case '*' :
-					return colNumToCompare * numberToCompare;
-					break;
-				case '/' :
-                    if (numberToCompare == 0)
-                    {
-                        printf("Divide by Zero Error");
-                        return 0;
-                    }
-                	return colNumToCompare / numberToCompare;
-					break;
-				case '^'  :
-					return (int)pow(colNumToCompare, numberToCompare);
-					break;
-				default :
-					printf("error in mathOperation()");
-			}
-            return false;
+    if (operator == '\0')
+        return colNumToOperate;
+	switch(*operator)
+	{
+		case '+'  :
+			return colNumToOperate + numToOperate;
+			break;
+		case '-' :
+			return colNumToOperate - numToOperate;
+			break;
+		case '*' :
+			return colNumToOperate * numToOperate;
+			break;
+		case '/' :
+            if (numToOperate == 0)
+            {
+                printf("Divide by Zero Error");
+                return 0;
+            }
+            return colNumToOperate / numToOperate;
+			break;
+		case '^'  :
+			return (int)pow(colNumToOperate, numToOperate);
+			break;
+        case '\0' :
+            return colNumToOperate;
+            break;
+		default :
+			printf("error in mathOperation()");
+	}
+    return false;
 }
-		
+
 %}
  
 %union {
@@ -137,6 +150,9 @@ int mathOperation(char operator, int colNumToCompare, int numberToCompare)
 %type <str> assignment
 %type <str> foreach_generate
 %type <str> expression
+%type <str> expressions
+%type <str> math_expression
+%type <str> columnid_math_expression
 
 %%
  
@@ -159,7 +175,6 @@ command :
 load_filename:                           	
 		LOAD FILENAME
 		{
-            printf("load_filename");
             FILE * f;
 			fopen_s(&f, $2, "rb");
 			fseek (f, 0, SEEK_END);
@@ -190,14 +205,13 @@ filter_by:
 			
 			// get a line
 			int pos = 0;
-			char newString[256];
-            newString[0] = '\0';
+			char newString[256] = "";
 			do{
                 char line[256] = "";
 				getLineFromPosition(variable, &pos, line);
 				int colNumToCompare = atoi(&line[colID * 2]);
 				
-				if (match(*comparator, colNumToCompare, numberToCompare))
+				if (match(comparator, colNumToCompare, numberToCompare))
 				{
 					strcat_s(newString, 256, line);
 				}
@@ -205,44 +219,76 @@ filter_by:
 			
 			$$ = newString;
 		}
-	
+	    ;
+
 foreach_generate:
-    FOREACH VARIABLE GENERATE expression
+    FOREACH VARIABLE GENERATE expressions
     {
-        $$ =  $4;
+        char* variable = {var_values[$2]};
+    	// get a line
+		int pos = 0;
+		char newString[100000] = "";
+		do{
+            char lineFromVariable[256] = "";
+	        getLineFromPosition(variable, &pos, lineFromVariable);
+            for (int i = 0; i < forEachValuesIndex; ++i)
+            {
+                struct ForEach foreach = for_each_values[i];
+                int columnIndex = foreach.columnIndex;
+                int colNumToOperate = atoi(&lineFromVariable[columnIndex * 2]);
+                int result = mathOperation(foreach.operator, colNumToOperate, foreach.number);
+                char buffer[100000] = "";
+                _itoa_s(result, buffer, 100000, 10);
+                strcat_s(newString, 100000, buffer);
+                if (i != forEachValuesIndex - 1)
+                    strcat_s(newString, 100000, ",");
+            }
+            strcat_s(newString, 100000, "\n");
+
+        }while(variable[pos] != '\0');
+
+        $$ = newString;
+
+        forEachValuesIndex = 0;
     }
 
+expressions:
+    expression
+    |
+    expressions',' expression
+    ;
+
 expression:
+    math_expression
+    |
+    columnid_math_expression
+    ;
+math_expression:
+    COLUMNID NUMBER
+    {
+        struct ForEach forEach;
+        forEach.columnIndex = $2;
+        forEach.operator = '\0';
+        forEach.number = 0;
+        for_each_values[forEachValuesIndex] = forEach;
+        forEachValuesIndex++;
+    }
+    ;
+columnid_math_expression:
     COLUMNID NUMBER OPERATOR NUMBER
 		{
-			char* variable = {var_values[$<index>-1]};
-			int colID = $1;
-			char* operator = $3;
-			int numberToOperate = $4;
-			
-			// get a line
-			int pos = 0;
-			char newString[256];
-            newString[0] = '\0';
-			do{
-                char line[256] = "";
-				getLineFromPosition(variable, &pos, line);
-				int colNumToOperate = atoi(&line[colID * 2]);
-				
-				int number = mathOperation(*operator, colNumToOperate, numberToOperate);
-                char stringNumber[33];
-                itoa (number, stringNumber, 10);
-				strcat_s(newString, 256, stringNumber);
-                if (variable[pos] != '\0')
-                    strcat_s(newString, 256, ",");
-				
-			}while(variable[pos] != '\0');
-			
-			$$ = newString;
-		}
+            struct ForEach forEach;
+            forEach.columnIndex = $2;
+            forEach.operator = $3;
+            forEach.number = $4;
 
+            for_each_values[forEachValuesIndex] = forEach;
+            forEachValuesIndex++;
+
+		}
+        ;
 assignment : VARIABLE '=' command	
-		{ 
+		{ ;
 			var_values[$1] = $3; 
 			var_def[$1] = 1;  
 			$$ = var_values[$1];
@@ -254,6 +300,7 @@ assignment : VARIABLE '=' command
 int main(void)
 {
     /* reset all the definition flags first */
+    forEachValuesIndex = 0;
     reset();
      
     yyparse();
